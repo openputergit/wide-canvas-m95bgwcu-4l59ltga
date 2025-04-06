@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>RICreate - Creative Media Studio</title>
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.1/font/bootstrap-icons.css" rel="stylesheet">
+    <script src="https://unpkg.com/@ffmpeg/ffmpeg@0.12.1/dist/ffmpeg.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/uuid/8.3.2/uuid.min.js"></script>
+    <style>
+        :root {
+            --primary: #efe81f;
+            --secondary: #074f9c;
+            --dark-blue: #006BFF;
+            --cyan: #08C2FF;
+            --light-cyan: #BCF2F6;
+        }
+
+        .glassmorphic {
+            background: rgba(7, 79, 156, 0.1);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37);
+        }
+
+        .glow {
+            box-shadow: 0 0 15px var(--primary);
+        }
+
+        .neu-button {
+            background: linear-gradient(145deg, #efe81f, #d6d01c);
+            box-shadow: 5px 5px 10px #c4be19, -5px -5px 10px #fff225;
+            transition: all 0.3s ease;
+        }
+
+        .neu-button:hover {
+            background: linear-gradient(145deg, #d6d01c, #efe81f);
+            box-shadow: 3px 3px 6px #c4be19, -3px -3px 6px #fff225;
+        }
+
+        .drop-zone {
+            border: 3px dashed var(--secondary);
+            transition: all 0.3s ease;
+        }
+
+        .drop-zone.dragging {
+            border-color: var(--primary);
+            background: rgba(239, 232, 31, 0.1);
+        }
+
+        .media-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        @media (max-width: 640px) {
+            .media-grid {
+                grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+            }
+        }
+    </style>
+</head>
+<body class="bg-gray-900 text-white min-h-screen">
+    <nav class="glassmorphic fixed w-full top-0 z-50 px-6 py-4">
+        <div class="flex justify-between items-center">
+            <h1 class="text-2xl font-bold text-primary">RICreate</h1>
+            <div class="flex space-x-4">
+                <button class="neu-button px-4 py-2 rounded-lg text-gray-900">Sign In</button>
+                <button class="neu-button px-4 py-2 rounded-lg text-gray-900">Get Started</button>
+            </div>
+        </div>
+    </nav>
+
+    <main class="container mx-auto px-4 pt-24">
+        <div class="flex flex-col md:flex-row gap-6">
+            <!-- Media Upload Section -->
+            <section class="w-full md:w-2/3">
+                <div class="drop-zone h-64 rounded-xl flex flex-col items-center justify-center p-6 mb-6">
+                    <i class="bi bi-cloud-upload text-5xl mb-4"></i>
+                    <p class="text-center">Drag and drop media files here or click to upload</p>
+                    <input type="file" id="fileInput" class="hidden" multiple accept="image/*,video/*">
+                </div>
+
+                <div class="media-grid" id="mediaPreview"></div>
+            </section>
+
+            <!-- Controls Section -->
+            <section class="w-full md:w-1/3 glassmorphic rounded-xl p-6">
+                <h2 class="text-xl font-bold mb-4">Creation Settings</h2>
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block mb-2">Layout Style</label>
+                        <select class="w-full bg-gray-800 rounded-lg p-2">
+                            <option>Masonry</option>
+                            <option>Spiral</option>
+                            <option>Grid</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block mb-2">Export Quality</label>
+                        <select class="w-full bg-gray-800 rounded-lg p-2">
+                            <option>1080p</option>
+                            <option>720p</option>
+                            <option>480p</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block mb-2">Transition Effect</label>
+                        <select class="w-full bg-gray-800 rounded-lg p-2">
+                            <option>Fade</option>
+                            <option>Slide</option>
+                            <option>Zoom</option>
+                            <option>Rotate</option>
+                            <option>Cube</option>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block mb-2">Background Music</label>
+                        <select class="w-full bg-gray-800 rounded-lg p-2">
+                            <option>None</option>
+                            <option>Pop</option>
+                            <option>Electronic</option>
+                            <option>Acoustic</option>
+                        </select>
+                    </div>
+
+                    <button class="w-full neu-button py-3 rounded-lg text-gray-900 font-bold">
+                        Create & Export
+                    </button>
+                </div>
+            </section>
+        </div>
+    </main>
+
+    <script>
+        const dropZone = document.querySelector('.drop-zone');
+        const fileInput = document.getElementById('fileInput');
+        const mediaPreview = document.getElementById('mediaPreview');
+        let mediaFiles = [];
+
+        // Generate unique user ID and store in localStorage
+        const userId = localStorage.getItem('userId') || uuid.v4();
+        localStorage.setItem('userId', userId);
+
+        const appSlug = 'ricreate-app-' + Math.random().toString(36).substr(2, 9);
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragging');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragging');
+        });
+
+        dropZone.addEventListener('drop', async (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragging');
+            const files = [...e.dataTransfer.files];
+            await handleFiles(files);
+        });
+
+        dropZone.addEventListener('click', () => {
+            fileInput.click();
+        });
+
+        fileInput.addEventListener('change', async (e) => {
+            const files = [...e.target.files];
+            await handleFiles(files);
+        });
+
+        async function handleFiles(files) {
+            for (const file of files) {
+                if (file.type.startsWith('image/') || file.type.startsWith('video/')) {
+                    const formData = new FormData();
+                    formData.append('file', file);
+                    formData.append('userId', userId);
+                    formData.append('appSlug', appSlug);
+
+                    try {
+                        const response = await fetch('https://r0c8kgwocscg8gsokogwwsw4.zetaverse.one/storage/upload', {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': 'Bearer 2jdTCZ8Ne1W9NYrGn9E23C8Cj1Y2'
+                            },
+                            body: formData
+                        });
+
+                        const data = await response.json();
+                        if (data.success) {
+                            mediaFiles.push({
+                                url: data.url,
+                                type: file.type
+                            });
+                            updateMediaPreview();
+                        }
+                    } catch (error) {
+                        console.error('Upload failed:', error);
+                    }
+                }
+            }
+        }
+
+        function updateMediaPreview() {
+            mediaPreview.innerHTML = mediaFiles.map((file, index) => `
+                <div class="relative rounded-lg overflow-hidden">
+                    ${file.type.startsWith('image/') 
+                        ? `<img src="${file.url}" class="w-full h-48 object-cover">`
+                        : `<video src="${file.url}" class="w-full h-48 object-cover"></video>`
+                    }
+                    <button onclick="removeMedia(${index})" class="absolute top-2 right-2 bg-red-500 rounded-full p-1">
+                        <i class="bi bi-x"></i>
+                    </button>
+                </div>
+            `).join('');
+        }
+
+        function removeMedia(index) {
+            mediaFiles.splice(index, 1);
+            updateMediaPreview();
+        }
+    </script>
+<script>document.body.addEventListener('wheel', e => { if (!e.ctrlKey) return; e.preventDefault(); return }, { passive: false })</script>
+	</body>
+</html>
